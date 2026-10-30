@@ -1,0 +1,1554 @@
+<!DOCTYPE html>
+<html lang="hi" class="h-full bg-slate-50">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Medical Store Counter & Instant Billing (Dukan Hisab)</title>
+  <meta name="description" content="Single-page Medical Store / Pharmacy Billing and Inventory Management System with local storage persistence.">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+  
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* Custom Print Styles for Pharmacy Bill Receipt */
+    @media print {
+      body * {
+        visibility: hidden;
+      }
+      #print-receipt-modal,
+      #print-receipt-modal * {
+        visibility: visible;
+      }
+      #print-receipt-modal {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        margin: 0;
+        padding: 10px;
+        background: white;
+      }
+      .no-print {
+        display: none !important;
+      }
+    }
+  </style>
+</head>
+<body class="min-h-full flex flex-col font-sans text-slate-800 antialiased bg-slate-100">
+
+  <!-- ========================================== -->
+  <!-- 1. HEADER SECTION                          -->
+  <!-- ========================================== -->
+  <header class="bg-slate-900 text-white shadow-lg sticky top-0 z-40 border-b border-slate-800">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        
+        <!-- Title & Medical Icon -->
+        <div class="flex items-center space-x-3">
+          <div class="w-11 h-11 bg-gradient-to-tr from-blue-600 to-emerald-500 rounded-xl flex items-center justify-center shadow-md shadow-blue-500/20 text-white">
+            <!-- Medical Cross / Pill SVG -->
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"></path>
+            </svg>
+          </div>
+          <div>
+            <h1 class="text-xl sm:text-2xl font-extrabold tracking-tight text-white flex items-center gap-2">
+              Medical Store Counter & Instant Billing
+            </h1>
+            <p class="text-xs sm:text-sm font-medium text-slate-400">
+              Dukan Hisab &bull; Pharmacy Stock &amp; POS Billing Counter
+            </p>
+          </div>
+        </div>
+
+        <!-- Right Side: Token Management & Actions -->
+        <div class="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+          <!-- Owner Name Badge -->
+          <div class="flex items-center gap-1.5 bg-slate-800/90 px-2.5 py-1.5 rounded-lg border border-slate-700 text-xs shadow-sm">
+            <span class="text-slate-400 font-medium">Owner:</span>
+            <input id="user-display-name" type="text" value="Kundan" class="bg-slate-900 text-emerald-300 font-bold px-2 py-0.5 rounded border border-slate-700 text-xs w-24 focus:outline-none focus:border-emerald-500" title="Owner Name" onchange="updateUserName(this.value)">
+          </div>
+
+          <!-- Store Secret Token (Never Reset on Refresh) -->
+          <div class="flex items-center gap-1.5 bg-slate-800/95 px-2.5 py-1.5 rounded-lg border border-amber-500/50 text-xs shadow-sm">
+            <span class="text-amber-400 font-bold flex items-center gap-1">
+              🔑 Token:
+            </span>
+            <span id="store-token-display" class="font-mono font-black text-amber-300 tracking-wider select-all cursor-pointer" onclick="copyStoreToken()" title="Click karke Token copy karein">STORE-KUNDAN-389</span>
+            <button onclick="copyStoreToken()" title="Token Copy Karein" class="p-1 text-slate-400 hover:text-white rounded transition text-xs">
+              📋
+            </button>
+            <button onclick="changeStoreTokenPrompt()" title="Naya Token banayein ya Token badlein" class="p-1 text-slate-400 hover:text-amber-300 rounded transition text-xs font-semibold">
+              ⚙️
+            </button>
+          </div>
+
+          <!-- Backup Download Button -->
+          <button onclick="downloadBackupJSON()" title="Poora Data (Stock & Sales) File me Save / Download karein" class="text-xs text-slate-200 hover:text-white bg-slate-800 hover:bg-slate-700 px-2.5 py-1.5 rounded-lg border border-slate-700 transition flex items-center gap-1">
+            <span>💾</span> Backup
+          </button>
+
+          <!-- Restore Backup Button -->
+          <button onclick="openRestoreModal()" title="Backup File se Data Restore karein" class="text-xs text-slate-200 hover:text-white bg-slate-800 hover:bg-slate-700 px-2.5 py-1.5 rounded-lg border border-slate-700 transition flex items-center gap-1">
+            <span>📥</span> Restore
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+    <!-- KPI Summary Row -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+        <div>
+          <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Kul Dawai (Types)</p>
+          <p class="text-2xl font-bold text-slate-800 mt-1" id="stat-total-medicines">0</p>
+        </div>
+        <div class="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center font-bold">💊</div>
+      </div>
+
+      <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+        <div>
+          <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Kul Units Stock</p>
+          <p class="text-2xl font-bold text-slate-800 mt-1 font-mono" id="stat-total-stock">0</p>
+        </div>
+        <div class="w-10 h-10 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold">📦</div>
+      </div>
+
+      <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+        <div>
+          <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Low Stock Warnings</p>
+          <p class="text-2xl font-bold text-amber-600 mt-1 font-mono" id="stat-low-stock">0</p>
+        </div>
+        <div class="w-10 h-10 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center font-bold">⚠️</div>
+      </div>
+
+      <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+        <div>
+          <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Aaj Ki Kul Bikri (Sales)</p>
+          <p class="text-2xl font-bold text-emerald-600 mt-1 font-mono" id="stat-today-sales">₹0.00</p>
+        </div>
+        <div class="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">₹</div>
+      </div>
+    </div>
+
+
+    <!-- ========================================== -->
+    <!-- 2. TOP FORMS (TWO COLUMN LAYOUT)           -->
+    <!-- ========================================== -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+      <!-- CARD 1: Stock Dalein (Stock In) -->
+      <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-5 sm:p-6 flex flex-col justify-between">
+        <div>
+          <div class="flex items-center space-x-2.5 mb-4 pb-3 border-b border-slate-100">
+            <span class="flex h-8 w-8 rounded-lg bg-blue-100 text-blue-600 items-center justify-center">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+            </span>
+            <div>
+              <h2 class="text-base sm:text-lg font-bold text-slate-900">Stock Dalein (Stock In)</h2>
+              <p class="text-xs text-slate-500">Nayi dawa inventory mein add karein ya purani dawa ka stock badhayein</p>
+            </div>
+          </div>
+
+          <form id="stock-in-form" onsubmit="handleStockIn(event)" class="space-y-4">
+            <!-- Dawa Ka Naam -->
+            <div>
+              <label for="stock-med-name" class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                Dawa Ka Naam (Medicine Name) <span class="text-rose-500">*</span>
+              </label>
+              <input 
+                type="text" 
+                id="stock-med-name" 
+                placeholder="e.g. Calpol 650, Azithral 500, Pan-D" 
+                required 
+                class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm font-medium transition"
+              >
+            </div>
+
+            <!-- Two inputs row: Quantity & Selling Price -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <!-- Quantity -->
+              <div>
+                <label for="stock-med-qty" class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                  Quantity (Strips/Bottles) <span class="text-rose-500">*</span>
+                </label>
+                <input 
+                  type="number" 
+                  id="stock-med-qty" 
+                  min="1" 
+                  placeholder="e.g. 20" 
+                  required 
+                  class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm font-mono font-medium transition"
+                >
+              </div>
+
+              <!-- Selling Price / Unit -->
+              <div>
+                <label for="stock-med-price" class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                  Selling Price / Unit (₹) <span class="text-rose-500">*</span>
+                </label>
+                <div class="relative rounded-xl">
+                  <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 font-mono font-bold">₹</span>
+                  <input 
+                    type="number" 
+                    id="stock-med-price" 
+                    step="0.01" 
+                    min="0.1" 
+                    placeholder="0.00" 
+                    required 
+                    class="w-full pl-8 pr-3.5 py-2.5 rounded-xl border border-slate-300 bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm font-mono font-medium transition"
+                  >
+                </div>
+              </div>
+            </div>
+
+            <!-- Blue Color Stock Add Button -->
+            <div class="pt-2">
+              <button 
+                type="submit" 
+                class="w-full bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold py-2.5 px-4 rounded-xl shadow-md shadow-blue-500/25 hover:shadow-lg hover:shadow-blue-500/30 transition duration-150 flex items-center justify-center gap-2 text-sm"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                Stock Add Karein
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+
+      <!-- CARD 2: Quick Bill / Sell (Bikri Karein) -->
+      <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-5 sm:p-6 flex flex-col justify-between">
+        <div>
+          <div class="flex items-center space-x-2.5 mb-4 pb-3 border-b border-slate-100">
+            <span class="flex h-8 w-8 rounded-lg bg-emerald-100 text-emerald-600 items-center justify-center">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+            </span>
+            <div>
+              <h2 class="text-base sm:text-lg font-bold text-slate-900">Quick Bill / Sell (Bikri Karein)</h2>
+              <p class="text-xs text-slate-500">Customer ko dawa bechein aur turant bill generate karein</p>
+            </div>
+          </div>
+
+          <form id="sell-form" onsubmit="handleSell(event)" class="space-y-4">
+            <!-- Dawa Chunein (Select Medicine) -->
+            <div>
+              <div class="flex justify-between items-center mb-1">
+                <label for="sell-med-select" class="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                  Dawa Chunein (Select Medicine) <span class="text-rose-500">*</span>
+                </label>
+                <span id="stock-availability-hint" class="text-xs font-medium text-slate-400">Pehle dawa chunein</span>
+              </div>
+              <select 
+                id="sell-med-select" 
+                required 
+                onchange="handleMedicineSelectionChange()"
+                class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm font-medium transition cursor-pointer"
+              >
+                <option value="">-- Dawa Chunein (Select Medicine) --</option>
+              </select>
+            </div>
+
+            <!-- Three inputs row: Qty, GST & Total Bill -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <!-- Kitna Bechna Hai (Qty) -->
+              <div>
+                <label for="sell-qty" class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                  Qty <span class="text-rose-500">*</span>
+                </label>
+                <input 
+                  type="number" 
+                  id="sell-qty" 
+                  value="1" 
+                  min="1" 
+                  required 
+                  oninput="updateTotalBillCalculation()"
+                  class="w-full px-3 py-2.5 rounded-xl border border-slate-300 bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm font-mono font-medium transition"
+                >
+              </div>
+
+              <!-- GST Rate (%) Option -->
+              <div>
+                <label for="sell-gst" class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                  GST Rate (%)
+                </label>
+                <select 
+                  id="sell-gst" 
+                  onchange="updateTotalBillCalculation()"
+                  class="w-full px-3 py-2.5 rounded-xl border border-slate-300 bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-xs sm:text-sm font-semibold text-slate-800 transition cursor-pointer"
+                >
+                  <option value="0">0% (Bina GST)</option>
+                  <option value="5">5% GST (Essential)</option>
+                  <option value="12" selected>12% GST (Medicine)</option>
+                  <option value="18">18% GST (Standard)</option>
+                  <option value="28">28% GST</option>
+                </select>
+              </div>
+
+              <!-- Kul Rakam (Total Bill) Auto Calculated -->
+              <div>
+                <div class="flex justify-between items-center mb-1">
+                  <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                    Kul Bill (Net)
+                  </label>
+                  <span id="gst-amount-hint" class="text-[10px] text-emerald-700 font-semibold">+₹0.00 GST</span>
+                </div>
+                <div class="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-emerald-50/60 text-emerald-800 font-mono font-bold text-base flex items-center justify-between">
+                  <span>₹</span>
+                  <span id="calculated-total-bill">0.00</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Green Color Sell Button -->
+            <div class="pt-2">
+              <button 
+                type="submit" 
+                id="btn-sell"
+                class="w-full bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-semibold py-2.5 px-4 rounded-xl shadow-md shadow-emerald-500/25 hover:shadow-lg hover:shadow-emerald-500/30 transition duration-150 flex items-center justify-center gap-2 text-sm"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                Bill / Sell Karein
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+    </div>
+
+
+    <!-- ========================================== -->
+    <!-- 3. AVAILABLE STOCK TABLE (Dukan Ka Stock)  -->
+    <!-- ========================================== -->
+    <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+      <!-- Table Header & Search -->
+      <div class="p-4 sm:p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-slate-50/40">
+        <div>
+          <h2 class="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
+            <span>📦</span> Available Stock Table (Dukan Ka Stock)
+          </h2>
+          <p class="text-xs text-slate-500">Sabhi dawaiyon ka maujooda stock aur unki keemat</p>
+        </div>
+
+        <!-- Search Bar -->
+        <div class="relative w-full sm:w-72">
+          <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+          </span>
+          <input 
+            type="text" 
+            id="stock-search-input" 
+            oninput="renderStockTable()"
+            placeholder="Dawa ka naam khojein..." 
+            class="w-full pl-9 pr-3.5 py-2 rounded-xl border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-xs sm:text-sm font-medium transition"
+          >
+        </div>
+      </div>
+
+      <!-- Table -->
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr class="bg-slate-50 border-b border-slate-200 text-slate-600 text-[11px] sm:text-xs font-bold uppercase tracking-wider">
+              <th class="py-3 px-4">Dawa Ka Naam</th>
+              <th class="py-3 px-4 text-right">Rate / Unit (₹)</th>
+              <th class="py-3 px-4 text-center">Bacha Hua Stock (Qty)</th>
+              <th class="py-3 px-4 text-center">Status</th>
+              <th class="py-3 px-4 text-center">Action</th>
+            </tr>
+          </thead>
+          <tbody id="stock-table-body" class="divide-y divide-slate-100 text-xs sm:text-sm">
+            <!-- Populated via JavaScript -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Empty State -->
+      <div id="stock-empty-message" class="hidden p-8 text-center text-slate-400">
+        <p class="text-sm font-medium">Koi dawa nahi mili. Upar 'Stock Dalein' se nayi dawa add karein!</p>
+      </div>
+    </div>
+
+
+    <!-- ========================================== -->
+    <!-- 4. SALES HISTORY TABLE (Bikri Ka Hisab)    -->
+    <!-- ========================================== -->
+    <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+      <!-- Section Header -->
+      <div class="p-4 sm:p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-slate-50/40">
+        <div>
+          <h2 class="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
+            <span>🧾</span> Sales History Table (Bikri Ka Hisab)
+          </h2>
+          <p class="text-xs text-slate-500">Aaj aur pehle ki sabhi billings ka record</p>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button onclick="clearAllSalesHistory()" class="text-xs text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 px-3 py-1.5 rounded-lg font-semibold transition">
+            Clear Sales History
+          </button>
+        </div>
+      </div>
+
+      <!-- Table -->
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr class="bg-slate-50 border-b border-slate-200 text-slate-600 text-[11px] sm:text-xs font-bold uppercase tracking-wider">
+              <th class="py-3 px-4">Date / Time</th>
+              <th class="py-3 px-4">Dawa Ka Naam</th>
+              <th class="py-3 px-4 text-center">Quantity Sold</th>
+              <th class="py-3 px-4 text-right">Total Amount (₹)</th>
+              <th class="py-3 px-4 text-center">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="sales-table-body" class="divide-y divide-slate-100 text-xs sm:text-sm">
+            <!-- Populated via JavaScript -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Empty State -->
+      <div id="sales-empty-message" class="hidden p-8 text-center text-slate-400">
+        <p class="text-sm font-medium">Abhi tak koi bikri nahi hui hai. 'Quick Bill / Sell' se pehla bill banayein!</p>
+      </div>
+    </div>
+
+  </main>
+
+
+  <!-- ========================================== -->
+  <!-- MODAL: PRINTABLE PHARMACY RECEIPT          -->
+  <!-- ========================================== -->
+  <div id="receipt-modal-backdrop" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div id="print-receipt-modal" class="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 border border-slate-200 flex flex-col justify-between">
+      
+      <!-- Receipt Header -->
+      <div class="text-center pb-4 border-b border-dashed border-slate-300">
+        <div class="w-10 h-10 bg-emerald-600 text-white rounded-full flex items-center justify-center mx-auto mb-2 text-lg font-bold">
+          +
+        </div>
+        <h3 class="font-extrabold text-lg text-slate-900 tracking-tight">MEDICAL STORE &amp; PHARMACY</h3>
+        <p class="text-xs text-slate-500">Retail Invoice &bull; Dukan Hisab</p>
+        <p class="text-[11px] text-slate-400 mt-0.5" id="receipt-datetime">--</p>
+      </div>
+
+      <!-- Receipt Content -->
+      <div class="py-4 space-y-3 text-sm">
+        <div class="flex justify-between items-center text-xs text-slate-500 pb-1 border-b border-slate-100">
+          <span>Item</span>
+          <span>Qty &times; Rate = Amount</span>
+        </div>
+
+        <div class="flex justify-between items-start font-medium">
+          <div>
+            <p class="font-bold text-slate-900" id="receipt-med-name">--</p>
+            <p class="text-xs text-slate-500" id="receipt-rate-calc">--</p>
+          </div>
+          <p class="font-mono font-bold text-slate-900" id="receipt-item-total">₹0.00</p>
+        </div>
+
+        <!-- GST Breakdown Line -->
+        <div id="receipt-gst-row" class="flex justify-between items-center text-xs text-slate-600 pt-1 border-t border-slate-100">
+          <span id="receipt-gst-label">GST:</span>
+          <span class="font-mono font-semibold text-slate-800" id="receipt-gst-amount">₹0.00</span>
+        </div>
+
+        <div class="pt-3 border-t-2 border-slate-900 flex justify-between items-center text-base font-extrabold text-slate-900">
+          <span>KUL RAKAM (NET):</span>
+          <span class="font-mono text-emerald-700 text-lg" id="receipt-grand-total">₹0.00</span>
+        </div>
+        <div class="text-center pt-2">
+          <span class="inline-block text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded border border-emerald-200">
+            PAID CASH / UPI
+          </span>
+        </div>
+      </div>
+
+      <!-- Receipt Footer Note -->
+      <div class="text-center pt-3 border-t border-dashed border-slate-300 text-[11px] text-slate-400">
+        <p>Swasthya Hi Dhan Hai! Dawa doctor ki salah se lein.</p>
+        <p class="text-[10px] mt-0.5">Thank you for visiting &bull; Get well soon</p>
+      </div>
+
+      <!-- Modal Action Buttons (Hidden when printing) -->
+      <div class="mt-6 flex gap-2 no-print">
+        <button onclick="closeReceiptModal()" class="flex-1 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl text-xs transition">
+          Close
+        </button>
+        <button onclick="window.print()" class="flex-1 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl text-xs shadow-md shadow-emerald-600/30 transition flex items-center justify-center gap-1.5">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+          Print Slip
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+
+  <!-- ========================================== -->
+  <!-- MODAL: EDIT MEDICINE (Stock & Price Update) -->
+  <!-- ========================================== -->
+  <div id="edit-medicine-modal-backdrop" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 border border-slate-200">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+        <h3 class="font-bold text-slate-900 text-base flex items-center gap-2">
+          <span>✏️</span> Dawa Edit Karein
+        </h3>
+        <button onclick="closeEditModal()" class="text-slate-400 hover:text-slate-600 text-lg font-bold">&times;</button>
+      </div>
+
+      <form onsubmit="handleEditMedicineSubmit(event)" class="mt-4 space-y-3">
+        <input type="hidden" id="edit-med-id">
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Dawa Ka Naam</label>
+          <input type="text" id="edit-med-name" required class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none font-medium">
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Stock (Qty)</label>
+            <input type="number" id="edit-med-qty" min="0" required class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Price / Unit (₹)</label>
+            <input type="number" id="edit-med-price" min="0" step="0.5" required class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono">
+          </div>
+        </div>
+
+        <div class="mt-5 flex gap-2 pt-2">
+          <button type="button" onclick="closeEditModal()" class="flex-1 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl text-xs transition">
+            Cancel
+          </button>
+          <button type="submit" class="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-xs shadow-md shadow-blue-500/20 transition">
+            Update &amp; Save
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+
+  <!-- ========================================== -->
+  <!-- MODAL: RESTORE BACKUP DATA                 -->
+  <!-- ========================================== -->
+  <div id="restore-modal-backdrop" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 border border-slate-200">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+        <h3 class="font-bold text-slate-900 text-base flex items-center gap-2">
+          <span>📥</span> Backup Data Restore Karein
+        </h3>
+        <button onclick="closeRestoreModal()" class="text-slate-400 hover:text-slate-600 text-lg font-bold">&times;</button>
+      </div>
+
+      <div class="mt-4 space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+            1. Backup JSON File Upload Karein:
+          </label>
+          <input type="file" id="restore-file-input" accept=".json" class="w-full text-xs text-slate-600 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer">
+        </div>
+
+        <div class="text-center text-xs text-slate-400 font-bold uppercase">— Ya Direct Token Dalein —</div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+            2. Store Token:
+          </label>
+          <div class="flex gap-2">
+            <input type="text" id="restore-token-input" placeholder="jaise: STORE-KUNDAN-389" class="flex-1 px-3 py-2 rounded-xl border border-slate-300 text-xs font-mono font-bold focus:ring-2 focus:ring-amber-500 focus:outline-none">
+            <button onclick="applyTokenFromInput()" class="px-3 py-2 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl text-xs transition">
+              Load Token
+            </button>
+          </div>
+        </div>
+
+        <div class="mt-4 flex gap-2 pt-2 border-t border-slate-100">
+          <button type="button" onclick="closeRestoreModal()" class="flex-1 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl text-xs transition">
+            Band Karein
+          </button>
+          <button type="button" onclick="handleRestoreFromFile()" class="flex-1 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl text-xs shadow-md shadow-emerald-600/20 transition">
+            Restore File Data
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+
+  <!-- ========================================== -->
+  <!-- 5. VANILLA JAVASCRIPT LOGIC (TOKEN-BASED PERSISTENCE) -->
+  <!-- ========================================== -->
+  <script>
+    // Master Token Settings
+    const DEFAULT_STORE_TOKEN = 'STORE-KUNDAN-389';
+    let storeToken = getActiveStoreToken();
+
+    // Storage Keys
+    const STORAGE_KEY_USER = 'medical_store_username';
+    function getStockKey() { return 'medical_store_stock_' + storeToken; }
+    function getSalesKey() { return 'medical_store_sales_' + storeToken; }
+
+    // In-memory state
+    let inventory = [];
+    let salesHistory = [];
+    let lastServerUpdated = 0;
+    
+    // User Identity (Kundan)
+    let currentUserName = localStorage.getItem(STORAGE_KEY_USER);
+    if (!currentUserName || currentUserName.includes('Sonali') || currentUserName.includes('Sonelee') || currentUserName.includes('(Owner)')) {
+      currentUserName = 'Kundan';
+      localStorage.setItem(STORAGE_KEY_USER, 'Kundan');
+    }
+
+    // Realistic Demo Medicines for Brand New Empty Store Only
+    const SAMPLE_MEDICINES = [
+      { id: 'med_1', name: 'Calpol 650 Tablet', qty: 45, price: 32.50 },
+      { id: 'med_2', name: 'Azithral 500 Tablet (Azithromycin)', qty: 18, price: 119.00 },
+      { id: 'med_3', name: 'Pan-D Capsule (Pantoprazole + Domperidone)', qty: 25, price: 145.00 },
+      { id: 'med_4', name: 'Combiflam Tablet', qty: 30, price: 42.00 },
+      { id: 'med_5', name: 'Dolo 650 Tablet', qty: 50, price: 30.00 },
+      { id: 'med_6', name: 'Amoxyclav 625 (Augmentin)', qty: 8, price: 185.00 },
+      { id: 'med_7', name: 'Cetirizine 10mg (Okacet)', qty: 4, price: 18.00 },
+      { id: 'med_8', name: 'Ascoril D Plus Cough Syrup (100ml)', qty: 3, price: 125.00 },
+      { id: 'med_9', name: 'Betadine 10% Ointment (20g)', qty: 0, price: 95.00 }
+    ];
+
+    // ==========================================
+    // TOKEN LIFECYCLE & PERSISTENCE
+    // ==========================================
+    function getActiveStoreToken() {
+      // 1. First priority: URL Query Param ?token=...
+      const urlParams = new URLSearchParams(window.location.search);
+      const tokenInUrl = urlParams.get('token');
+      if (tokenInUrl && tokenInUrl.trim()) {
+        const clean = tokenInUrl.trim();
+        localStorage.setItem('medical_store_token', clean);
+        return clean;
+      }
+
+      // 2. Second priority: LocalStorage
+      let savedToken = localStorage.getItem('medical_store_token');
+      if (savedToken && savedToken.trim()) {
+        if (savedToken.includes('SONALI') || savedToken.includes('SONELEE')) {
+          savedToken = DEFAULT_STORE_TOKEN;
+          localStorage.setItem('medical_store_token', savedToken);
+        }
+        return savedToken.trim();
+      }
+
+      // 3. Fallback default
+      localStorage.setItem('medical_store_token', DEFAULT_STORE_TOKEN);
+      return DEFAULT_STORE_TOKEN;
+    }
+
+    function ensureTokenInUrl() {
+      const url = new URL(window.location.href);
+      if (url.searchParams.get('token') !== storeToken) {
+        url.searchParams.set('token', storeToken);
+        window.history.replaceState({}, '', url.toString());
+      }
+      const tokenDisplay = document.getElementById('store-token-display');
+      if (tokenDisplay) {
+        tokenDisplay.textContent = storeToken;
+      }
+      const restoreInput = document.getElementById('restore-token-input');
+      if (restoreInput) {
+        restoreInput.value = storeToken;
+      }
+    }
+
+    function copyStoreToken() {
+      navigator.clipboard.writeText(storeToken).then(() => {
+        showToast(`Token copy ho gaya: "${storeToken}"`, 'success');
+      }).catch(() => {
+        prompt("Aapka Store Token yeh hai (Copy karein):", storeToken);
+      });
+    }
+
+    function changeStoreTokenPrompt() {
+      const current = storeToken;
+      const newToken = prompt("Apna Store Token dalein ya naya banayein (Refresh karne par bhi yahi token data load karega):", current);
+      if (newToken && newToken.trim() && newToken.trim() !== current) {
+        const clean = newToken.trim().toUpperCase();
+        localStorage.setItem('medical_store_token', clean);
+        storeToken = clean;
+        ensureTokenInUrl();
+        loadDataFromStorage();
+        renderAll();
+        fetchFromServer();
+        showToast(`Store Token badal kar "${clean}" ho gaya!`, 'info');
+      }
+    }
+
+    // ==========================================
+    // INITIALIZATION & REAL-TIME SYNC
+    // ==========================================
+    window.addEventListener('DOMContentLoaded', async () => {
+      ensureTokenInUrl();
+
+      // 1. Set User display name
+      const nameInput = document.getElementById('user-display-name');
+      if (nameInput) {
+        nameInput.value = currentUserName;
+      }
+
+      // 2. Load LocalStorage first (0 millisecond instant UI render on refresh)
+      loadDataFromStorage();
+      renderAll();
+
+      // 3. Immediately pull latest synchronized data from server using Token
+      await fetchFromServer();
+
+      // 4. Start fast real-time heartbeat polling (every 1.5 seconds)
+      setInterval(checkServerUpdates, 1500);
+    });
+
+    function updateUserName(newName) {
+      const trimmed = newName.trim();
+      if (trimmed) {
+        currentUserName = trimmed;
+        localStorage.setItem(STORAGE_KEY_USER, trimmed);
+        showToast(`Aapka naam "${trimmed}" set ho gaya!`, 'info');
+      }
+    }
+
+    function updateSyncUI(status, author) {
+      const badge = document.getElementById('sync-status-badge');
+      const dot = document.getElementById('sync-dot');
+      const text = document.getElementById('sync-status-text');
+      if (!badge || !dot || !text) return;
+
+      if (status === 'saving') {
+        badge.className = 'inline-flex items-center px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/30 shadow-inner';
+        dot.className = 'w-2 h-2 rounded-full bg-blue-400 mr-1.5 animate-ping';
+        text.textContent = 'Saving... ⏳';
+      } else if (status === 'synced') {
+        badge.className = 'inline-flex items-center px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 shadow-inner';
+        dot.className = 'w-2 h-2 rounded-full bg-emerald-400 mr-1.5 animate-pulse';
+        text.textContent = author ? `Live: ${author} 🟢` : 'Live Synced 🟢';
+      } else if (status === 'offline') {
+        badge.className = 'inline-flex items-center px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/30 shadow-inner';
+        dot.className = 'w-2 h-2 rounded-full bg-amber-400 mr-1.5';
+        text.textContent = 'Offline Mode ⚠️';
+      } else if (status === 'error') {
+        badge.className = 'inline-flex items-center px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-rose-500/10 text-rose-400 border border-rose-500/30 shadow-inner';
+        dot.className = 'w-2 h-2 rounded-full bg-rose-400 mr-1.5';
+        text.textContent = 'Sync Error ❌';
+      }
+    }
+
+    // Server Data Fetch (Using Store Token)
+    async function fetchFromServer() {
+      try {
+        const res = await fetch(`/api/data?token=${encodeURIComponent(storeToken)}`, {
+          cache: 'no-store',
+          headers: { 'X-Store-Token': storeToken }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data && Array.isArray(data.inventory)) {
+            inventory = data.inventory;
+            salesHistory = data.salesHistory || [];
+            lastServerUpdated = data.lastUpdated || Date.now();
+            saveStockToStorage();
+            saveSalesToStorage();
+            renderAll();
+            updateSyncUI('synced', data.lastModifiedBy);
+          }
+        } else {
+          updateSyncUI('offline');
+        }
+      } catch (e) {
+        updateSyncUI('offline');
+      }
+    }
+
+    // Atomic Server Action Execution (Thread-Safe & Multi-Device Sync)
+    async function executeAction(actionName, payload = {}) {
+      updateSyncUI('saving');
+      try {
+        payload.action = actionName;
+        payload.author = currentUserName;
+        payload.token = storeToken;
+
+        const res = await fetch('/api/action', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Store-Token': storeToken
+          },
+          body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.message || 'Server request failed');
+        }
+
+        const data = await res.json();
+        inventory = data.inventory || [];
+        salesHistory = data.salesHistory || [];
+        lastServerUpdated = data.lastUpdated || Date.now();
+
+        saveStockToStorage();
+        saveSalesToStorage();
+        renderAll();
+        updateSyncUI('synced', currentUserName);
+
+        if (data.lastAction) {
+          showToast(data.lastAction, 'success');
+        }
+        return data;
+
+      } catch (err) {
+        console.warn("Server action failed, keeping changes in Local Storage:", err);
+        // Seamless fallback to LocalStorage so data is NEVER lost even if server drops
+        saveStockToStorage();
+        saveSalesToStorage();
+        renderAll();
+        updateSyncUI('offline');
+        showToast("Changes locally save ho gaye! (Offline)", "info");
+        return null;
+      }
+    }
+
+    // Heartbeat: Check updates from server for this Token
+    async function checkServerUpdates() {
+      try {
+        const res = await fetch(`/api/data?token=${encodeURIComponent(storeToken)}`, {
+          cache: 'no-store',
+          headers: { 'X-Store-Token': storeToken }
+        });
+        if (!res.ok) {
+          updateSyncUI('offline');
+          return;
+        }
+        const data = await res.json();
+
+        if (data.lastUpdated && data.lastUpdated > lastServerUpdated) {
+          lastServerUpdated = data.lastUpdated;
+          inventory = data.inventory || [];
+          salesHistory = data.salesHistory || [];
+
+          saveStockToStorage();
+          saveSalesToStorage();
+
+          const activeEl = document.activeElement;
+          const isTyping = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'SELECT');
+
+          renderKPISummary();
+          renderStockTable();
+          renderSalesHistoryTable();
+          if (!isTyping) {
+            populateMedicineDropdown();
+          }
+
+          updateSyncUI('synced', data.lastModifiedBy);
+          if (data.lastModifiedBy && data.lastModifiedBy !== currentUserName) {
+            showToast(`📢 ${data.lastAction || data.lastModifiedBy + ' ne changes kiye!'}`, 'info');
+          }
+        }
+      } catch (err) {
+        updateSyncUI('offline');
+      }
+    }
+
+    // Refresh-Safe Storage Loader
+    function loadDataFromStorage() {
+      // 1. Check token-bound key first
+      const savedStock = localStorage.getItem(getStockKey()) || localStorage.getItem('medical_store_stock');
+      if (savedStock) {
+        try {
+          inventory = JSON.parse(savedStock);
+        } catch (e) {
+          inventory = [...SAMPLE_MEDICINES];
+        }
+      } else {
+        inventory = [...SAMPLE_MEDICINES];
+        saveStockToStorage();
+      }
+
+      // 2. Check token-bound sales
+      const savedSales = localStorage.getItem(getSalesKey()) || localStorage.getItem('medical_store_sales');
+      if (savedSales) {
+        try {
+          salesHistory = JSON.parse(savedSales);
+        } catch (e) {
+          salesHistory = [];
+        }
+      } else {
+        salesHistory = [];
+        saveSalesToStorage();
+      }
+    }
+
+    function saveStockToStorage() {
+      const json = JSON.stringify(inventory);
+      localStorage.setItem(getStockKey(), json);
+      localStorage.setItem('medical_store_stock', json); // master fallback
+    }
+
+    function saveSalesToStorage() {
+      const json = JSON.stringify(salesHistory);
+      localStorage.setItem(getSalesKey(), json);
+      localStorage.setItem('medical_store_sales', json); // master fallback
+    }
+
+    // ==========================================
+    // BACKUP & RESTORE UTILITIES
+    // ==========================================
+    function downloadBackupJSON() {
+      const backupData = {
+        token: storeToken,
+        exportedAt: new Date().toISOString(),
+        exportedBy: currentUserName,
+        inventory: inventory,
+        salesHistory: salesHistory
+      };
+
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2));
+      const downloadAnchor = document.createElement('a');
+      const dateStr = new Date().toISOString().slice(0, 10);
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `DukanHisab_Backup_${storeToken}_${dateStr}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+
+      showToast("💾 Poora Backup file download ho gaya!", "success");
+    }
+
+    function openRestoreModal() {
+      document.getElementById('restore-modal-backdrop').classList.remove('hidden');
+    }
+
+    function closeRestoreModal() {
+      document.getElementById('restore-modal-backdrop').classList.add('hidden');
+    }
+
+    function applyTokenFromInput() {
+      const inputVal = document.getElementById('restore-token-input').value.trim();
+      if (inputVal) {
+        const clean = inputVal.toUpperCase();
+        storeToken = clean;
+        localStorage.setItem('medical_store_token', clean);
+        ensureTokenInUrl();
+        loadDataFromStorage();
+        renderAll();
+        fetchFromServer();
+        closeRestoreModal();
+        showToast(`Token "${clean}" load ho gaya!`, 'success');
+      }
+    }
+
+    function handleRestoreFromFile() {
+      const fileInput = document.getElementById('restore-file-input');
+      const file = fileInput.files[0];
+      if (!file) {
+        showToast("Pehle koi backup JSON file chunein!", "error");
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = async function(e) {
+        try {
+          const parsed = JSON.parse(e.target.result);
+          if (!parsed || !Array.isArray(parsed.inventory)) {
+            showToast("Invalid backup file! Inventory nahi mili.", "error");
+            return;
+          }
+
+          if (parsed.token) {
+            storeToken = parsed.token;
+            localStorage.setItem('medical_store_token', parsed.token);
+            ensureTokenInUrl();
+          }
+
+          inventory = parsed.inventory;
+          salesHistory = Array.isArray(parsed.salesHistory) ? parsed.salesHistory : [];
+
+          saveStockToStorage();
+          saveSalesToStorage();
+          renderAll();
+
+          // Sync restored backup to server
+          await executeAction('RESTORE_BACKUP', {
+            inventory: inventory,
+            salesHistory: salesHistory
+          });
+
+          closeRestoreModal();
+          showToast("🎉 Data safaltapoorvak restore ho gaya!", "success");
+
+        } catch (err) {
+          showToast("File read karne me error: " + err.message, "error");
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    // ==========================================
+    // RENDER FUNCTIONS
+    // ==========================================
+    function renderAll() {
+      renderKPISummary();
+      populateMedicineDropdown();
+      renderStockTable();
+      renderSalesHistoryTable();
+      updateTotalBillCalculation();
+    }
+
+    // 1. KPI Summary Cards
+    function renderKPISummary() {
+      const totalMedicines = inventory.length;
+      const totalStockUnits = inventory.reduce((sum, item) => sum + (Number(item.qty) || 0), 0);
+      const lowStockCount = inventory.filter(item => item.qty <= 5).length;
+
+      const today = new Date().toDateString();
+      const todayTotal = salesHistory
+        .filter(sale => new Date(sale.timestamp).toDateString() === today)
+        .reduce((sum, sale) => sum + (Number(sale.total) || 0), 0);
+
+      document.getElementById('stat-total-medicines').textContent = totalMedicines;
+      document.getElementById('stat-total-stock').textContent = totalStockUnits;
+      document.getElementById('stat-low-stock').textContent = lowStockCount;
+      document.getElementById('stat-today-sales').textContent = `₹${todayTotal.toFixed(2)}`;
+    }
+
+    // 2. Populate Dropdown for Quick Bill
+    function populateMedicineDropdown() {
+      const select = document.getElementById('sell-med-select');
+      const currentSelected = select.value;
+      
+      select.innerHTML = '<option value="">-- Dawa Chunein (Select Medicine) --</option>';
+
+      inventory.forEach(med => {
+        const opt = document.createElement('option');
+        opt.value = med.id;
+        opt.textContent = `${med.name} (Stock: ${med.qty}) - ₹${Number(med.price).toFixed(2)}`;
+        
+        if (med.qty <= 0) {
+          opt.textContent += ' [KHATAM / OUT]';
+          opt.disabled = true;
+          opt.classList.add('text-slate-400');
+        }
+
+        if (med.id === currentSelected && med.qty > 0) {
+          opt.selected = true;
+        }
+
+        select.appendChild(opt);
+      });
+
+      handleMedicineSelectionChange();
+    }
+
+    // 3. Selection change in Sell Dropdown
+    function handleMedicineSelectionChange() {
+      const select = document.getElementById('sell-med-select');
+      const hint = document.getElementById('stock-availability-hint');
+      const qtyInput = document.getElementById('sell-qty');
+      const medId = select.value;
+
+      if (!medId) {
+        hint.textContent = 'Pehle dawa chunein';
+        hint.className = 'text-xs font-medium text-slate-400';
+        updateTotalBillCalculation();
+        return;
+      }
+
+      const med = inventory.find(m => m.id === medId);
+      if (med) {
+        hint.textContent = `Available Stock: ${med.qty} unit(s) @ ₹${Number(med.price).toFixed(2)}`;
+        hint.className = med.qty > 5 ? 'text-xs font-bold text-emerald-600' : 'text-xs font-bold text-amber-600';
+        qtyInput.max = med.qty;
+        if (Number(qtyInput.value) > med.qty) {
+          qtyInput.value = med.qty;
+        }
+      }
+
+      updateTotalBillCalculation();
+    }
+
+    // 4. Calculate Total Bill (Price * Qty + GST)
+    function updateTotalBillCalculation() {
+      const select = document.getElementById('sell-med-select');
+      const qtyInput = document.getElementById('sell-qty');
+      const gstSelect = document.getElementById('sell-gst');
+      const display = document.getElementById('calculated-total-bill');
+      const gstHint = document.getElementById('gst-amount-hint');
+
+      const medId = select.value;
+      const qty = parseInt(qtyInput.value, 10) || 0;
+      const gstRate = parseFloat(gstSelect ? gstSelect.value : 0) || 0;
+
+      if (!medId || qty <= 0) {
+        display.textContent = '0.00';
+        if (gstHint) gstHint.textContent = '+₹0.00 GST';
+        return;
+      }
+
+      const med = inventory.find(m => m.id === medId);
+      if (med) {
+        const subtotal = Number(med.price) * qty;
+        const gstAmount = (subtotal * gstRate) / 100;
+        const netTotal = subtotal + gstAmount;
+
+        display.textContent = netTotal.toFixed(2);
+        if (gstHint) {
+          if (gstRate > 0) {
+            gstHint.textContent = `+₹${gstAmount.toFixed(2)} (${gstRate}% GST)`;
+          } else {
+            gstHint.textContent = 'Bina GST (0%)';
+          }
+        }
+      } else {
+        display.textContent = '0.00';
+        if (gstHint) gstHint.textContent = '+₹0.00 GST';
+      }
+    }
+
+    // 5. Render Available Stock Table with Filter
+    function renderStockTable() {
+      const tbody = document.getElementById('stock-table-body');
+      const emptyMsg = document.getElementById('stock-empty-message');
+      const query = (document.getElementById('stock-search-input')?.value || '').toLowerCase().trim();
+
+      const filtered = inventory.filter(m => m.name.toLowerCase().includes(query));
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = '';
+        emptyMsg.classList.remove('hidden');
+        return;
+      }
+
+      emptyMsg.classList.add('hidden');
+
+      tbody.innerHTML = filtered.map(item => {
+        let badgeHtml = '';
+        let rowClass = 'hover:bg-slate-50/70 transition';
+
+        if (item.qty > 5) {
+          badgeHtml = `<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5"></span>
+            In Stock
+          </span>`;
+        } else if (item.qty >= 1 && item.qty <= 5) {
+          badgeHtml = `<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-200">
+            <span class="w-1.5 h-1.5 rounded-full bg-amber-500 mr-1.5"></span>
+            Low Stock (${item.qty})
+          </span>`;
+          rowClass += ' bg-amber-50/20';
+        } else {
+          badgeHtml = `<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-100 text-rose-800 border border-rose-200">
+            <span class="w-1.5 h-1.5 rounded-full bg-rose-500 mr-1.5"></span>
+            Khatam (Out)
+          </span>`;
+          rowClass += ' bg-rose-50/20';
+        }
+
+        return `
+          <tr class="${rowClass}">
+            <td class="py-3 px-4 font-semibold text-slate-900">${escapeHtml(item.name)}</td>
+            <td class="py-3 px-4 text-right font-mono font-medium text-slate-800">₹${Number(item.price).toFixed(2)}</td>
+            <td class="py-3 px-4 text-center font-mono font-bold text-slate-900">${item.qty}</td>
+            <td class="py-3 px-4 text-center">${badgeHtml}</td>
+            <td class="py-3 px-4 text-center">
+              <div class="inline-flex items-center gap-1.5">
+                <button onclick="openEditModal('${item.id}')" title="Dawa Edit Karein (Price/Stock)" class="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition border border-transparent hover:border-blue-200">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                </button>
+                <button onclick="quickAddStock('${item.id}', 10)" title="Quick +10 Add Karein" class="px-2 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold rounded border border-blue-200 transition">
+                  +10
+                </button>
+                <button onclick="deleteMedicine('${item.id}')" title="Dawa Delete Karein" class="p-1 text-slate-400 hover:text-rose-600 rounded transition">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                </button>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    // 6. Render Sales History Table
+    function renderSalesHistoryTable() {
+      const tbody = document.getElementById('sales-table-body');
+      const emptyMsg = document.getElementById('sales-empty-message');
+
+      if (salesHistory.length === 0) {
+        tbody.innerHTML = '';
+        emptyMsg.classList.remove('hidden');
+        return;
+      }
+
+      emptyMsg.classList.add('hidden');
+
+      tbody.innerHTML = salesHistory.map(sale => {
+        return `
+          <tr class="hover:bg-slate-50 transition">
+            <td class="py-3 px-4 text-slate-600 text-xs font-medium">
+              ${escapeHtml(sale.datetime)}
+              <div class="text-[10px] text-slate-400 font-normal">By: ${escapeHtml(sale.author || 'Store')}</div>
+            </td>
+            <td class="py-3 px-4 font-semibold text-slate-900">${escapeHtml(sale.medicineName)}</td>
+            <td class="py-3 px-4 text-center font-mono font-bold text-slate-800">${sale.qty}</td>
+            <td class="py-3 px-4 text-right font-mono">
+              <div class="font-extrabold text-emerald-700">₹${Number(sale.total).toFixed(2)}</div>
+              ${sale.gstPercent ? `<div class="text-[10px] text-slate-400 font-normal">incl. ${sale.gstPercent}% GST (₹${Number(sale.gstAmount || 0).toFixed(2)})</div>` : ''}
+            </td>
+            <td class="py-3 px-4 text-center">
+              <div class="inline-flex items-center gap-2">
+                <button onclick="openReceiptModal('${sale.id}')" class="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-semibold rounded-lg border border-emerald-200 transition flex items-center gap-1">
+                  <span>🖨️</span> Print
+                </button>
+                <button onclick="deleteSaleRecord('${sale.id}')" class="p-1 text-slate-400 hover:text-rose-600 transition" title="Delete Sale Record">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                </button>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    // ==========================================
+    // ACTION HANDLERS (PERSISTENT & TOKEN-BASED)
+    // ==========================================
+
+    // Card 1: Stock Add Karein
+    async function handleStockIn(e) {
+      e.preventDefault();
+
+      const nameInput = document.getElementById('stock-med-name');
+      const qtyInput = document.getElementById('stock-med-qty');
+      const priceInput = document.getElementById('stock-med-price');
+
+      const name = nameInput.value.trim();
+      const qty = parseInt(qtyInput.value, 10);
+      const price = parseFloat(priceInput.value);
+
+      if (!name || isNaN(qty) || qty <= 0 || isNaN(price) || price < 0) {
+        showToast("Kripya sahi dawa naam, quantity aur price enter karein!", "error");
+        return;
+      }
+
+      // Check existing medicine locally first
+      const existing = inventory.find(m => m.name.toLowerCase() === name.toLowerCase());
+      if (existing) {
+        existing.qty += qty;
+        existing.price = price;
+      } else {
+        inventory.unshift({
+          id: 'med_' + Date.now(),
+          name: name,
+          qty: qty,
+          price: price
+        });
+      }
+      saveStockToStorage();
+      renderAll();
+
+      await executeAction('ADD_STOCK', { name, qty, price });
+
+      nameInput.value = '';
+      qtyInput.value = '';
+      priceInput.value = '';
+      nameInput.focus();
+    }
+
+    // Quick Add stock shortcut from table (+10)
+    async function quickAddStock(medId, amount) {
+      const target = inventory.find(m => m.id === medId);
+      if (target) {
+        target.qty += amount;
+        saveStockToStorage();
+        renderAll();
+      }
+      await executeAction('QUICK_ADD_STOCK', { id: medId, amount });
+    }
+
+    // Edit Medicine Modal controls
+    function openEditModal(medId) {
+      const med = inventory.find(m => m.id === medId);
+      if (!med) return;
+      document.getElementById('edit-med-id').value = med.id;
+      document.getElementById('edit-med-name').value = med.name;
+      document.getElementById('edit-med-qty').value = med.qty;
+      document.getElementById('edit-med-price').value = med.price;
+      document.getElementById('edit-medicine-modal-backdrop').classList.remove('hidden');
+    }
+
+    function closeEditModal() {
+      document.getElementById('edit-medicine-modal-backdrop').classList.add('hidden');
+    }
+
+    async function handleEditMedicineSubmit(e) {
+      e.preventDefault();
+      const id = document.getElementById('edit-med-id').value;
+      const name = document.getElementById('edit-med-name').value.trim();
+      const qty = parseInt(document.getElementById('edit-med-qty').value, 10);
+      const price = parseFloat(document.getElementById('edit-med-price').value);
+
+      if (!name || isNaN(qty) || qty < 0 || isNaN(price) || price < 0) {
+        showToast("Kripya sahi naam, quantity aur price dalein!", "error");
+        return;
+      }
+
+      const target = inventory.find(m => m.id === id);
+      if (target) {
+        target.name = name;
+        target.qty = qty;
+        target.price = price;
+        saveStockToStorage();
+        renderAll();
+      }
+
+      await executeAction('UPDATE_MEDICINE', { id, name, qty, price });
+      closeEditModal();
+    }
+
+    // Delete medicine from inventory
+    async function deleteMedicine(medId) {
+      const med = inventory.find(m => m.id === medId);
+      if (!med) return;
+
+      if (confirm(`Kya aap "${med.name}" ko inventory se delete karna chahte hain?`)) {
+        inventory = inventory.filter(m => m.id !== medId);
+        saveStockToStorage();
+        renderAll();
+        await executeAction('DELETE_MEDICINE', { id: medId });
+      }
+    }
+
+    // Card 2: Quick Bill / Sell Karein
+    async function handleSell(e) {
+      e.preventDefault();
+
+      const select = document.getElementById('sell-med-select');
+      const qtyInput = document.getElementById('sell-qty');
+
+      const medId = select.value;
+      const qty = parseInt(qtyInput.value, 10);
+
+      if (!medId) {
+        showToast("Pehle dawa chunein!", "error");
+        return;
+      }
+
+      if (isNaN(qty) || qty <= 0) {
+        showToast("Bechne ke liye kam se kam 1 quantity honi chahiye!", "error");
+        return;
+      }
+
+      const med = inventory.find(m => m.id === medId);
+      if (!med) {
+        showToast("Dawa stock mein nahi mili!", "error");
+        return;
+      }
+
+      if (med.qty < qty) {
+        showToast(`Stock kam hai! Sirf ${med.qty} unit(s) available hain.`, "error");
+        return;
+      }
+
+      // Local optimistic update
+      med.qty -= qty;
+      const gstSelect = document.getElementById('sell-gst');
+      const gstRate = parseFloat(gstSelect ? gstSelect.value : 0) || 0;
+
+      const subtotal = Number((med.price * qty).toFixed(2));
+      const gstAmount = Number(((subtotal * gstRate) / 100).toFixed(2));
+      const totalAmount = Number((subtotal + gstAmount).toFixed(2));
+      const now = new Date();
+      const tempSale = {
+        id: 'sale_' + Date.now(),
+        timestamp: now.getTime(),
+        datetime: now.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) + ' ' + now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
+        medicineId: med.id,
+        medicineName: med.name,
+        pricePerUnit: med.price,
+        qty: qty,
+        subtotal: subtotal,
+        gstPercent: gstRate,
+        gstAmount: gstAmount,
+        total: totalAmount,
+        author: currentUserName
+      };
+
+      salesHistory.unshift(tempSale);
+      saveStockToStorage();
+      saveSalesToStorage();
+      renderAll();
+
+      const result = await executeAction('SELL_MEDICINE', { id: medId, qty, gstPercent: gstRate });
+      qtyInput.value = '1';
+
+      if (result && result.createdSale) {
+        openReceiptModal(result.createdSale.id);
+      } else {
+        openReceiptModal(tempSale.id);
+      }
+    }
+
+    // Delete single sale record
+    async function deleteSaleRecord(saleId) {
+      if (confirm("Kya aap yeh bill record delete karna chahte hain?")) {
+        salesHistory = salesHistory.filter(s => s.id !== saleId);
+        saveSalesToStorage();
+        renderAll();
+        await executeAction('DELETE_SALE', { id: saleId });
+      }
+    }
+
+    // Clear All Sales History
+    async function clearAllSalesHistory() {
+      if (salesHistory.length === 0) return;
+      if (confirm("Puri sales history clear karni hai?")) {
+        salesHistory = [];
+        saveSalesToStorage();
+        renderAll();
+        await executeAction('CLEAR_ALL_SALES', {});
+      }
+    }
+
+    // Reload Demo Medicines
+    async function loadSampleData() {
+      if (confirm("Sample medicines list reload karni hai?")) {
+        inventory = [...SAMPLE_MEDICINES];
+        saveStockToStorage();
+        renderAll();
+        await executeAction('RESET_DEMO', {});
+      }
+    }
+
+    // ==========================================
+    // PRINTABLE RECEIPT MODAL
+    // ==========================================
+    function openReceiptModal(saleId) {
+      const sale = salesHistory.find(s => s.id === saleId);
+      if (!sale) return;
+
+      const subtotal = sale.subtotal != null ? Number(sale.subtotal) : (Number(sale.pricePerUnit) * Number(sale.qty));
+      const gstRate = sale.gstPercent || 0;
+      const gstAmount = sale.gstAmount != null ? Number(sale.gstAmount) : Number((Number(sale.total) - subtotal).toFixed(2));
+
+      document.getElementById('receipt-datetime').textContent = sale.datetime;
+      document.getElementById('receipt-med-name').textContent = sale.medicineName;
+      document.getElementById('receipt-rate-calc').textContent = `${sale.qty} unit(s) &times; ₹${Number(sale.pricePerUnit).toFixed(2)}`;
+      document.getElementById('receipt-item-total').textContent = `₹${subtotal.toFixed(2)}`;
+
+      const gstRow = document.getElementById('receipt-gst-row');
+      if (gstRow) {
+        if (gstRate > 0) {
+          gstRow.classList.remove('hidden');
+          document.getElementById('receipt-gst-label').textContent = `GST (${gstRate}%):`;
+          document.getElementById('receipt-gst-amount').textContent = `+₹${gstAmount.toFixed(2)}`;
+        } else {
+          gstRow.classList.add('hidden');
+        }
+      }
+
+      document.getElementById('receipt-grand-total').textContent = `₹${Number(sale.total).toFixed(2)}`;
+
+      document.getElementById('receipt-modal-backdrop').classList.remove('hidden');
+    }
+
+    function closeReceiptModal() {
+      document.getElementById('receipt-modal-backdrop').classList.add('hidden');
+    }
+
+    // Close on clicking backdrop
+    document.getElementById('receipt-modal-backdrop').addEventListener('click', (e) => {
+      if (e.target.id === 'receipt-modal-backdrop') {
+        closeReceiptModal();
+      }
+    });
+
+    // Close edit modal on clicking backdrop
+    document.getElementById('edit-medicine-modal-backdrop').addEventListener('click', (e) => {
+      if (e.target.id === 'edit-medicine-modal-backdrop') {
+        closeEditModal();
+      }
+    });
+
+    // Close restore modal on clicking backdrop
+    document.getElementById('restore-modal-backdrop').addEventListener('click', (e) => {
+      if (e.target.id === 'restore-modal-backdrop') {
+        closeRestoreModal();
+      }
+    });
+
+    // ==========================================
+    // TOAST UTILITY
+    // ==========================================
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      
+      let bg = 'bg-slate-900 border-slate-700 text-white';
+      if (type === 'success') bg = 'bg-emerald-900/90 border-emerald-600 text-emerald-100 shadow-emerald-950/40';
+      if (type === 'error') bg = 'bg-rose-900/90 border-rose-600 text-rose-100 shadow-rose-950/40';
+      if (type === 'info') bg = 'bg-blue-900/90 border-blue-600 text-blue-100 shadow-blue-950/40';
+
+      toast.className = `pointer-events-auto px-4 py-3 rounded-xl border shadow-xl flex items-center space-x-2.5 text-xs sm:text-sm font-semibold transition duration-300 transform translate-y-2 opacity-0 ${bg}`;
+      
+      let icon = 'ℹ️';
+      if (type === 'success') icon = '✅';
+      if (type === 'error') icon = '⚠️';
+
+      toast.innerHTML = `<span>${icon}</span> <span>${escapeHtml(message)}</span>`;
+      container.appendChild(toast);
+
+      requestAnimationFrame(() => {
+        toast.classList.remove('translate-y-2', 'opacity-0');
+      });
+
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-2');
+        setTimeout(() => toast.remove(), 300);
+      }, 3500);
+    }
+
+    // Helper: Escape HTML
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+  </script>
+
+</body>
+</html>

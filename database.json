@@ -1,0 +1,315 @@
+{
+  "lastUpdated": 1793356962205,
+  "lastModifiedBy": "Kundan",
+  "inventory": [
+    {
+      "id": "med_1",
+      "name": "Calpol 650 Tablet",
+      "qty": 45,
+      "price": 32.5
+    },
+    {
+      "id": "med_2",
+      "name": "Azithral 500 Tablet (Azithromycin)",
+      "qty": 15,
+      "price": 119.0
+    },
+    {
+      "id": "med_3",
+      "name": "Pan-D Capsule (Pantoprazole + Domperidone)",
+      "qty": 25,
+      "price": 145.0
+    },
+    {
+      "id": "med_4",
+      "name": "Combiflam Tablet",
+      "qty": 30,
+      "price": 42.0
+    },
+    {
+      "id": "med_5",
+      "name": "Dolo 650 Tablet",
+      "qty": 50,
+      "price": 30.0
+    },
+    {
+      "id": "med_6",
+      "name": "Amoxyclav 625 (Augmentin)",
+      "qty": 8,
+      "price": 185.0
+    },
+    {
+      "id": "med_7",
+      "name": "Cetirizine 10mg (Okacet)",
+      "qty": 4,
+      "price": 18.0
+    },
+    {
+      "id": "med_8",
+      "name": "Ascoril D Plus Cough Syrup (100ml)",
+      "qty": 3,
+      "price": 125.0
+    },
+    {
+      "id": "med_9",
+      "name": "Betadine 10% Ointment (20g)",
+      "qty": 0,
+      "price": 95.0
+    }
+  ],
+  "salesHistory": [
+    {
+      "id": "sale_1793356962205",
+      "timestamp": 1793356962205,
+      "datetime": "30 Oct 2026, 04:12 PM",
+      "medicineId": "med_2",
+      "medicineName": "Azithral 500 Tablet (Azithromycin)",
+      "pricePerUnit": 119.0,
+      "qty": 3,
+      "subtotal": 357.0,
+      "gstPercent": 5.0,
+      "gstAmount": 17.85,
+      "total": 374.85,
+      "author": "Kundan"
+    }
+  ],
+  "lastAction": "Kundan ne 3x 'Azithral 500 Tablet (Azithromycin)' bechi (+5.0% GST, Bill: ₹374.85)",
+  "version": 10,
+  "stores": {
+    "STORE-SONALI-389": {
+      "token": "STORE-SONALI-389",
+      "inventory": [
+        {
+          "id": "med_1",
+          "name": "Calpol 650 Tablet",
+          "qty": 45,
+          "price": 32.5
+        },
+        {
+          "id": "med_2",
+          "name": "Azithral 500 Tablet (Azithromycin)",
+          "qty": 15,
+          "price": 119.0
+        },
+        {
+          "id": "med_3",
+          "name": "Pan-D Capsule (Pantoprazole + Domperidone)",
+          "qty": 25,
+          "price": 145.0
+        },
+        {
+          "id": "med_4",
+          "name": "Combiflam Tablet",
+          "qty": 30,
+          "price": 42.0
+        },
+        {
+          "id": "med_5",
+          "name": "Dolo 650 Tablet",
+          "qty": 50,
+          "price": 30.0
+        },
+        {
+          "id": "med_6",
+          "name": "Amoxyclav 625 (Augmentin)",
+          "qty": 8,
+          "price": 185.0
+        },
+        {
+          "id": "med_7",
+          "name": "Cetirizine 10mg (Okacet)",
+          "qty": 4,
+          "price": 18.0
+        },
+        {
+          "id": "med_8",
+          "name": "Ascoril D Plus Cough Syrup (100ml)",
+          "qty": 3,
+          "price": 125.0
+        },
+        {
+          "id": "med_9",
+          "name": "Betadine 10% Ointment (20g)",
+          "qty": 0,
+          "price": 95.0
+        }
+      ],
+      "salesHistory": [
+        {
+          "id": "sale_1793356962205",
+          "timestamp": 1793356962205,
+          "datetime": "30 Oct 2026, 04:12 PM",
+          "medicineId": "med_2",
+          "medicineName": "Azithral 500 Tablet (Azithromycin)",
+          "pricePerUnit": 119.0,
+          "qty": 3,
+          "subtotal": 357.0,
+          "gstPercent": 5.0,
+          "gstAmount": 17.85,
+          "total": 374.85,
+          "author": "Kundan"
+        }
+      ],
+      "lastUpdated": 1793356962205,
+      "lastModifiedBy": "Kundan",
+      "lastAction": "Kundan ne 3x 'Azithral 500 Tablet (Azithromycin)' bechi (+5.0% GST, Bill: ₹374.85)"
+    },
+    "STORE-SONELEE-389": {
+      "token": "STORE-SONELEE-389",
+      "inventory": [
+        {
+          "id": "med_1",
+          "name": "Calpol 650 Tablet",
+          "qty": 45,
+          "price": 32.5
+        },
+        {
+          "id": "med_2",
+          "name": "Azithral 500 Tablet (Azithromycin)",
+          "qty": 15,
+          "price": 119.0
+        },
+        {
+          "id": "med_3",
+          "name": "Pan-D Capsule (Pantoprazole + Domperidone)",
+          "qty": 25,
+          "price": 145.0
+        },
+        {
+          "id": "med_4",
+          "name": "Combiflam Tablet",
+          "qty": 30,
+          "price": 42.0
+        },
+        {
+          "id": "med_5",
+          "name": "Dolo 650 Tablet",
+          "qty": 50,
+          "price": 30.0
+        },
+        {
+          "id": "med_6",
+          "name": "Amoxyclav 625 (Augmentin)",
+          "qty": 8,
+          "price": 185.0
+        },
+        {
+          "id": "med_7",
+          "name": "Cetirizine 10mg (Okacet)",
+          "qty": 4,
+          "price": 18.0
+        },
+        {
+          "id": "med_8",
+          "name": "Ascoril D Plus Cough Syrup (100ml)",
+          "qty": 3,
+          "price": 125.0
+        },
+        {
+          "id": "med_9",
+          "name": "Betadine 10% Ointment (20g)",
+          "qty": 0,
+          "price": 95.0
+        }
+      ],
+      "salesHistory": [
+        {
+          "id": "sale_1793356962205",
+          "timestamp": 1793356962205,
+          "datetime": "30 Oct 2026, 04:12 PM",
+          "medicineId": "med_2",
+          "medicineName": "Azithral 500 Tablet (Azithromycin)",
+          "pricePerUnit": 119.0,
+          "qty": 3,
+          "subtotal": 357.0,
+          "gstPercent": 5.0,
+          "gstAmount": 17.85,
+          "total": 374.85,
+          "author": "Kundan"
+        }
+      ],
+      "lastUpdated": 1793356962205,
+      "lastModifiedBy": "Kundan",
+      "lastAction": "Kundan ne 3x 'Azithral 500 Tablet (Azithromycin)' bechi (+5.0% GST, Bill: ₹374.85)"
+    },
+    "STORE-KUNDAN-389": {
+      "token": "STORE-KUNDAN-389",
+      "inventory": [
+        {
+          "id": "med_1",
+          "name": "Calpol 650 Tablet",
+          "qty": 45,
+          "price": 32.5
+        },
+        {
+          "id": "med_2",
+          "name": "Azithral 500 Tablet (Azithromycin)",
+          "qty": 15,
+          "price": 119.0
+        },
+        {
+          "id": "med_3",
+          "name": "Pan-D Capsule (Pantoprazole + Domperidone)",
+          "qty": 25,
+          "price": 145.0
+        },
+        {
+          "id": "med_4",
+          "name": "Combiflam Tablet",
+          "qty": 30,
+          "price": 42.0
+        },
+        {
+          "id": "med_5",
+          "name": "Dolo 650 Tablet",
+          "qty": 50,
+          "price": 30.0
+        },
+        {
+          "id": "med_6",
+          "name": "Amoxyclav 625 (Augmentin)",
+          "qty": 8,
+          "price": 185.0
+        },
+        {
+          "id": "med_7",
+          "name": "Cetirizine 10mg (Okacet)",
+          "qty": 4,
+          "price": 18.0
+        },
+        {
+          "id": "med_8",
+          "name": "Ascoril D Plus Cough Syrup (100ml)",
+          "qty": 3,
+          "price": 125.0
+        },
+        {
+          "id": "med_9",
+          "name": "Betadine 10% Ointment (20g)",
+          "qty": 0,
+          "price": 95.0
+        }
+      ],
+      "salesHistory": [
+        {
+          "id": "sale_1793356962205",
+          "timestamp": 1793356962205,
+          "datetime": "30 Oct 2026, 04:12 PM",
+          "medicineId": "med_2",
+          "medicineName": "Azithral 500 Tablet (Azithromycin)",
+          "pricePerUnit": 119.0,
+          "qty": 3,
+          "subtotal": 357.0,
+          "gstPercent": 5.0,
+          "gstAmount": 17.85,
+          "total": 374.85,
+          "author": "Kundan"
+        }
+      ],
+      "lastUpdated": 1793356962205,
+      "lastModifiedBy": "Kundan",
+      "lastAction": "Kundan ne 3x 'Azithral 500 Tablet (Azithromycin)' bechi (+5.0% GST, Bill: ₹374.85)"
+    }
+  },
+  "token": "STORE-KUNDAN-389"
+}
